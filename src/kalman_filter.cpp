@@ -26,7 +26,7 @@ void KalmanFilter::Predict() {
   /**
    * TODO: predict the state
    */
-   x = F_ * x_; //
+   x_ = F_ * x_; //
    MatrixXd Ft = F.transpose(); //
    P_ = F_ * P * Ft + Q_; //
 
@@ -36,12 +36,12 @@ void KalmanFilter::Update(const VectorXd &z) {
   /**
    * TODO: update the state by using Kalman Filter equations
    */
-   VectorXd y = z - (H * x);
+   VectorXd y = z - (H * _x);
    MatrixXd S = H * P * H.transpose() + R;
    MatrixXd K = P * H.transpose() * S.inverse();
 
-   x = x + (K * y);
-   P = (I - (K * H)) * P;
+   x_ = x_ + (K * y);
+   P_ = (I - (K * H)) * P_;
 
 }
 
@@ -50,26 +50,36 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
    * TODO: update the state by using Extended Kalman Filter equations
    */
 
-   float x = ekf_.x_(0);
-   float y = ekf_x.x_(1);
+   float px = ekf_.x_(0);
+   float py = ekf_x.x_(1);
    float vx = ekf_.x_(2);
    float vy = ekf_.x_(3);
 
-   float rho = sqrt(x*x+y*y);
-   float thera = atan2(y,x);
-   float rho_dot = (x*vx+y*vy)/rho;
+   float ro = sqrt(px*px + py*py);
+   float theta = atan2(py, px);
+   float ro_dot = (px*vx + py*vy)/ro;
+
+   // check division by zero
+   if (ro < 0.0001) {
+     cout << "CalculateJacobian () - Error - Division by Zero" << endl;
+     return;
+   }
+
    VectorXd z_pred = VectorXd(3);
-   z_pred << rho,theta,rho_dot;
+   z_pred << ro,theta,ro_dot;
 
    VectorXd y = z - z_pred;
 
-   MatrixXd Ht = H.transpose();
-   MatrixXd S = H * P * Ht + R;
-   MatrixXd Si = S.inverse();
-   MatrixXd K = P * Ht * Si;
+   // make sure the angel is between -pi and pi
+   // [...]
 
-   x = x + (K * y); //
-   P = (I - (K * H)) * P; //
+   MatrixXd Ht = H_.transpose();
+   MatrixXd S = H_ * P_ * Ht + R_;
+   MatrixXd Si = S.inverse();
+   MatrixXd K = P_ * Ht * Si;
+
+   x_ = x_ + (K * y); //
+   P_ = (I - (K * H_)) * P_; //
 
 
 }
