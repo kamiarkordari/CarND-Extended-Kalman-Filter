@@ -3,6 +3,9 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+#define PI 3.14159265
+
+
 /*
  * Please note that the Eigen library does not initialize
  *   VectorXd or MatrixXd objects with zeros upon creation.
@@ -24,62 +27,72 @@ void KalmanFilter::Init(VectorXd &x_in, MatrixXd &P_in, MatrixXd &F_in,
 
 void KalmanFilter::Predict() {
   /**
-   * TODO: predict the state
+   * predict the state
    */
-   x_ = F_ * x_; //
-   MatrixXd Ft = F.transpose(); //
-   P_ = F_ * P * Ft + Q_; //
+   x_ = F_ * x_;
+   MatrixXd Ft = F_.transpose();
+   P_ = F_ * P_ * Ft + Q_;
 
 }
 
 void KalmanFilter::Update(const VectorXd &z) {
   /**
-   * TODO: update the state by using Kalman Filter equations
+   * update the state by using Kalman Filter equations
    */
-   VectorXd y = z - (H * _x);
-   MatrixXd S = H * P * H.transpose() + R;
-   MatrixXd K = P * H.transpose() * S.inverse();
+   VectorXd y = z - (H_ * x_);
+   MatrixXd S = H_ * P_ * H_.transpose() + R_;
+   MatrixXd K = P_ * H_.transpose() * S.inverse();
 
    x_ = x_ + (K * y);
-   P_ = (I - (K * H)) * P_;
+   long x_size = x_.size();
+   MatrixXd I = MatrixXd::Identity(x_size, x_size);
+   P_ = (I - K * H_) * P_;
 
 }
 
 void KalmanFilter::UpdateEKF(const VectorXd &z) {
   /**
-   * TODO: update the state by using Extended Kalman Filter equations
-   */
+  * update the state by using Extended Kalman Filter equations
+  */
 
-   float px = ekf_.x_(0);
-   float py = ekf_x.x_(1);
-   float vx = ekf_.x_(2);
-   float vy = ekf_.x_(3);
+  float px = x_(0);
+  float py = x_(1);
+  float vx = x_(2);
+  float vy = x_(3);
 
-   float ro = sqrt(px*px + py*py);
-   float theta = atan2(py, px);
-   float ro_dot = (px*vx + py*vy)/ro;
+  float ro = sqrt(px*px + py*py);
+  float theta = atan2(py, px);
+  float ro_dot;
 
-   // check division by zero
-   if (ro < 0.0001) {
-     cout << "CalculateJacobian () - Error - Division by Zero" << endl;
-     return;
-   }
+  // check division by zero
+  if (ro < 0.0001) {
+    ro_dot = 0;
+  } else {
+    ro_dot = (px*vx + py*vy)/ro;
+  };
 
-   VectorXd z_pred = VectorXd(3);
-   z_pred << ro,theta,ro_dot;
+  VectorXd z_pred = VectorXd(3);
+  z_pred << ro,theta,ro_dot;
 
-   VectorXd y = z - z_pred;
+  VectorXd y = z - z_pred;
 
-   // make sure the angel is between -pi and pi
-   // [...]
+  if (y[1] > PI) {
+    y[1] -= 2.f*PI;
+  };
 
-   MatrixXd Ht = H_.transpose();
-   MatrixXd S = H_ * P_ * Ht + R_;
-   MatrixXd Si = S.inverse();
-   MatrixXd K = P_ * Ht * Si;
+  if (y[1] < -PI) {
+    y[1] += 2.f*PI;
+  };
 
-   x_ = x_ + (K * y); //
-   P_ = (I - (K * H_)) * P_; //
+  MatrixXd Ht = H_.transpose();
+  MatrixXd S = H_ * P_ * Ht + R_;
+  MatrixXd Si = S.inverse();
+  MatrixXd K = P_ * Ht * Si;
+
+  x_ = x_ + (K * y);
+  long x_size = x_.size();
+  MatrixXd I = MatrixXd::Identity(x_size, x_size);
+  P_ = (I - K * H_) * P_;
 
 
 }
